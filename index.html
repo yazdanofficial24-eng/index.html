@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SpammerAPIKey — Number Lookup</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    color: #e0e0e0;
+  }
+  .container {
+    background: rgba(20, 20, 35, 0.85);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(120, 100, 255, 0.3);
+    border-radius: 16px;
+    padding: 32px;
+    width: 100%;
+    max-width: 520px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6), 0 0 40px rgba(120,100,255,0.15);
+  }
+  h1 {
+    font-size: 1.6rem;
+    text-align: center;
+    margin-bottom: 6px;
+    background: linear-gradient(90deg, #a78bfa, #f472b6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .subtitle {
+    text-align: center;
+    font-size: 0.8rem;
+    color: #888;
+    margin-bottom: 24px;
+    letter-spacing: 1px;
+  }
+  .field { margin-bottom: 16px; }
+  label {
+    display: block;
+    font-size: 0.85rem;
+    margin-bottom: 6px;
+    color: #b0b0d0;
+    font-weight: 600;
+  }
+  input {
+    width: 100%;
+    padding: 12px 14px;
+    background: rgba(0,0,0,0.4);
+    border: 1px solid rgba(120,100,255,0.25);
+    border-radius: 10px;
+    color: #fff;
+    font-size: 0.95rem;
+    outline: none;
+    transition: 0.2s;
+  }
+  input:focus {
+    border-color: #a78bfa;
+    box-shadow: 0 0 0 3px rgba(167,139,250,0.2);
+  }
+  .btn-row { display: flex; gap: 10px; margin-top: 20px; }
+  button {
+    flex: 1;
+    padding: 13px;
+    border: none;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: 0.2s;
+    letter-spacing: 0.5px;
+  }
+  #btnLookup {
+    background: linear-gradient(90deg, #7c3aed, #db2777);
+    color: #fff;
+  }
+  #btnLookup:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(124,58,237,0.4); }
+  #btnLookup:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  #btnClear {
+    background: rgba(255,255,255,0.08);
+    color: #ccc;
+    flex: 0.4;
+  }
+  #btnClear:hover { background: rgba(255,255,255,0.15); }
+  .result {
+    margin-top: 22px;
+    background: rgba(0,0,0,0.5);
+    border: 1px solid rgba(120,100,255,0.2);
+    border-radius: 10px;
+    padding: 16px;
+    min-height: 120px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.82rem;
+    white-space: pre-wrap;
+    word-break: break-all;
+    overflow-y: auto;
+    max-height: 320px;
+    color: #a5f3fc;
+  }
+  .result.empty { color: #555; font-style: italic; font-family: 'Segoe UI', sans-serif; }
+  .status {
+    text-align: center;
+    font-size: 0.75rem;
+    margin-top: 10px;
+    color: #666;
+  }
+  .loading::after {
+    content: '';
+    animation: dots 1.2s infinite;
+  }
+  @keyframes dots {
+    0%, 20% { content: '.'; }
+    40% { content: '..'; }
+    60%, 100% { content: '...'; }
+  }
+  .warn {
+    font-size: 0.7rem;
+    color: #f87171;
+    text-align: center;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px dashed rgba(248,113,113,0.3);
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔍 SpammerAPIKey</h1>
+    <p class="subtitle">NUMBER LOOKUP CLIENT v1.0</p>
+
+    <div class="field">
+      <label for="apiKey">API Key</label>
+      <input type="password" id="apiKey" placeholder="Masukkan API Key Tuan..." autocomplete="off">
+    </div>
+
+    <div class="field">
+      <label for="number">Nomor Target</label>
+      <input type="tel" id="number" placeholder="cth: 6281234567890" autocomplete="off">
+    </div>
+
+    <div class="field">
+      <label for="baseUrl">Base URL (opsional)</label>
+      <input type="text" id="baseUrl" 
+        placeholder="https://getcontact.com/number-lookup/en/p/query"
+        value="https://getcontact.com/number-lookup/en/p/query">
+    </div>
+
+    <div class="btn-row">
+      <button id="btnLookup">🚀 LOOKUP</button>
+      <button id="btnClear">✕ CLEAR</button>
+    </div>
+
+    <div id="result" class="result empty">Output akan muncul di sini...</div>
+    <div id="status" class="status"></div>
+
+    <p class="warn">⚠️ Gunakan hanya dengan API key resmi & izin eksplisit dari penyedia layanan.</p>
+  </div>
+
+<script>
+(function() {
+  'use strict';
+
+  const $apiKey  = document.getElementById('apiKey');
+  const $number  = document.getElementById('number');
+  const $baseUrl = document.getElementById('baseUrl');
+  const $btnLk   = document.getElementById('btnLookup');
+  const $btnCl   = document.getElementById('btnClear');
+  const $result  = document.getElementById('result');
+  const $status  = document.getElementById('status');
+
+  // ---------- Util ----------
+  function setResult(text, isEmpty = false) {
+    $result.textContent = text;
+    $result.classList.toggle('empty', isEmpty);
+  }
+
+  function setStatus(text) {
+    $status.textContent = text;
+  }
+
+  function normalizeNumber(input) {
+    let n = String(input).trim().replace(/[\s\-\(\)]/g, '');
+    if (n.startsWith('+')) n = n.slice(1);
+    if (n.startsWith('0')) n = '62' + n.slice(1);
+    return n;
+  }
+
+  function validateNumber(n) {
+    return /^[0-9]{8,15}$/.test(n);
+  }
+
+  // ---------- Core Lookup ----------
+  async function doLookup() {
+    const apiKey = $apiKey.value.trim();
+    const rawNum = $number.value.trim();
+    const baseUrl = $baseUrl.value.trim();
+
+    // Validasi
+    if (!apiKey) return setResult('❌ API Key kosong.', true), setStatus('');
+    if (!rawNum) return setResult('❌ Nomor target kosong.', true), setStatus('');
+    if (!baseUrl) return setResult('❌ Base URL kosong.', true), setStatus('');
+
+    const number = normalizeNumber(rawNum);
+    if (!validateNumber(number)) {
+      return setResult('❌ Format nomor tidak valid (8-15 digit).', true), setStatus('');
+    }
+
+    // Build URL
+    let url;
+    try {
+      const u = new URL(baseUrl);
+      u.searchParams.set('apikey', apiKey);
+      u.searchParams.set('query', number);
+      url = u.toString();
+    } catch (e) {
+      return setResult('❌ Base URL tidak valid: ' + e.message, true), setStatus('');
+    }
+
+    // UI: loading
+    $btnLk.disabled = true;
+    $btnLk.classList.add('loading');
+    $btnLk.textContent = '⏳ LOOKING UP';
+    setResult('⏳ Mengirim request ke server...', true);
+    setStatus('GET ' + url.replace(apiKey, '***'));
+
+    const startedAt = performance.now();
+
+    try {
+      const res = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json, text/plain, */*',
+          'X-API-Key': apiKey
+        },
+        // Jangan kirim cookie cross-origin otomatis kalau gak perlu
+        credentials: 'omit',
+        mode: 'cors'
+      });
+
+      const elapsed = (performance.now() - startedAt).toFixed(0);
+      const rawText = await res.text();
+
+      let pretty;
+      try {
+        pretty = JSON.stringify(JSON.parse(rawText), null, 2);
+      } catch {
+        pretty = rawText;
+      }
+
+      const header =
+        `[ HTTP ${res.status} ${res.statusText} ] — ${elapsed}ms\n` +
+        `[ URL ] ${url.replace(apiKey, '***')}\n` +
+        `${'─'.repeat(40)}\n`;
+
+      setResult(header + pretty, false);
+      setStatus(res.ok ? '✅ Request sukses.' : '⚠️ Server membalas status error.');
+
+    } catch (err) {
+      const elapsed = (performance.now() - startedAt).toFixed(0);
+      setResult(
+        `[ NETWORK ERROR ] — ${elapsed}ms\n${'─'.repeat(40)}\n` +
+        `${err.name}: ${err.message}\n\n` +
+        `Kemungkinan penyebab:\n` +
+        `• CORS diblokir browser (server tidak mengirim Access-Control-Allow-Origin)\n` +
+        `• Koneksi internet bermasalah\n` +
+        `• URL salah / endpoint mati\n\n` +
+        `Saran: kalau CORS, panggil dari backend (Node/Python), bukan langsung browser.`,
+        false
+      );
+      setStatus('❌ Request gagal.');
+    } finally {
+      $btnLk.disabled = false;
+      $btnLk.classList.remove('loading');
+      $btnLk.textContent = '🚀 LOOKUP';
+    }
+  }
+
+  // ---------- Clear ----------
+  function clearAll() {
+    $number.value = '';
+    setResult('Output akan muncul di sini...', true);
+    setStatus('');
+    $number.focus();
+  }
+
+  // ---------- Events ----------
+  $btnLk.addEventListener('click', doLookup);
+  $btnCl.addEventListener('click', clearAll);
+  $number.addEventListener('keydown', e => { if (e.key === 'Enter') doLookup(); });
+  $apiKey.addEventListener('keydown', e => { if (e.key === 'Enter') $number.focus(); });
+})();
+</script>
+</body>
+</html>
