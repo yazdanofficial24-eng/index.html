@@ -1,1 +1,77 @@
 
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DumpOsint_ID - API Server</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>⚡ DumpOsint_ID</h1>
+    <p class="subtitle">Advanced OSINT API Server</p>
+  </header>
+
+  <div class="card">
+    <h2>📡 Info Server</h2>
+    <div class="info-grid" id="info">
+      <div class="loading">Memuat...</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>🚀 Menu</h2>
+    <div class="btn-group">
+      <a href="/register" class="btn">🔑 Minta API Key</a>
+      <a href="/admin" class="btn btn-admin">⚙️ Admin Panel</a>
+      <a href="/docs" class="btn btn-secondary">📖 Dokumentasi</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>📊 Statistik</h2>
+    <div id="stats">
+      <div class="loading">Memuat...</div>
+    </div>
+  </div>
+
+  <footer>
+    <p>DumpOsint_ID &copy; 2026</p>
+  </footer>
+</div>
+
+<script>
+async function loadServerInfo() {
+  try {
+    const res = await fetch('/api/');
+    const data = await res.json();
+    document.getElementById('info').innerHTML = `
+      <div class="info-item"><div class="label">Server</div><div class="value">${data.server}</div></div>
+      <div class="info-item"><div class="label">Status</div><div class="value" style="color:#10b981">${data.status}</div></div>
+      <div class="info-item"><div class="label">Your IP</div><div class="value">${data.ip}</div></div>
+      <div class="info-item"><div class="label">Waktu</div><div class="value" style="font-size:0.85em">${data.time}</div></div>
+    `;
+  } catch(e) {
+    document.getElementById('info').innerHTML = `<div style="color:#ef4444">Error: ${e.message}</div>`;
+  }
+}
+
+async function loadStats() {
+  try {
+    const res = await fetch('/api/list');
+    const data = await res.json();
+    document.getElementById('stats').innerHTML = `
+      <div class="info-item"><div class="label">Total API Key</div><div class="value">${data.total || 0}</div></div>
+    `;
+  } catch(e) {
+    document.getElementById('stats').innerHTML = `<div style="color:#ef4444">Error</div>`;
+  }
+}
+
+loadServerInfo();
+loadStats();
+</script>
+</body>
+</html>
