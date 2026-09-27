@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin Panel - DumpOsint_ID</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>⚙️ Admin Panel</h1>
+    <p class="subtitle">DumpOsint_ID Control Center</p>
+  </header>
+
+  <!-- LOGIN -->
+  <div class="card" id="loginBox">
+    <h2>🔐 Login Admin</h2>
+    <div class="form-group">
+      <label>Admin Secret</label>
+      <input type="password" id="secret" placeholder="masukkan admin secret">
+    </div>
+    <button onclick="adminLogin()">Login</button>
+    <div id="loginResult" class="result-box"></div>
+  </div>
+
+  <!-- DASHBOARD (hidden sampai login) -->
+  <div id="dashboard" style="display:none;">
+    <div class="card">
+      <h2>📊 Statistik Server</h2>
+      <div class="info-grid" id="adminStats"></div>
+    </div>
+
+    <div class="card">
+      <h2>🔑 Generate API Key Baru</h2>
+      <div class="form-group">
+        <label>Label</label>
+        <input type="text" id="genLabel" placeholder="buyer_budi">
+      </div>
+      <div class="form-group">
+        <label>Durasi</label>
+        <select id="genDurasi">
+          <option value="1d">1 Hari</option>
+          <option value="7d">7 Hari</option>
+          <option value="30d">30 Hari</option>
+          <option value="permanent" selected>Permanen</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Limit Request</label>
+        <input type="number" id="genLimit" value="100">
+      </div>
+      <div class="form-group">
+        <label>Lock IP (opsional)</label>
+        <input type="text" id="genLock" placeholder="kosongkan jika tidak lock">
+      </div>
+      <button onclick="generateKey()">Generate API Key</button>
+      <div id="genResult" class="result-box"></div>
+    </div>
+
+    <div class="card">
+      <h2>📋 List All API Key</h2>
+      <button onclick="loadKeys()">🔄 Refresh</button>
+      <div id="keysList" class="table-wrap"></div>
+    </div>
+
+    <div class="card">
+      <h2>🚫 Ban IP</h2>
+      <div class="form-group">
+        <label>IP Address</label>
+        <input type="text" id="banIp" placeholder="192.168.1.5">
+      </div>
+      <button onclick="banIp()">Ban IP</button>
+      <button onclick="listBanned()" style="background:#475569;">List Banned</button>
+      <div id="banResult" class="result-box"></div>
+    </div>
+
+    <div class="card">
+      <button onclick="logout()" style="background:#ef4444;">🚪 Logout</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let ADMIN_SECRET = '';
+
+async function adminLogin() {
+  const s = document.getElementById('secret').value.trim();
+  if (!s) { alert('Isi secret dulu'); return; }
+
+  const box = document.getElementById('loginResult');
+  box.className = 'result-box show';
+  box.textContent = '⏳ Login...';
+
+  try {
+    const res = await fetch(`/api/admin?secret=${s}&action=status`);
+    const data = await res.json();
+    if (data.status === 'success') {
+      ADMIN_SECRET = s;
+      document.getElementById('loginBox').style.display = 'none';
+      document.getElementById('dashboard').style.display = 'block';
+      showStats(data);
+      loadKeys();
+    } else {
+      box.className = 'result-box show error';
+      box.textContent = '❌ ' + (data.message || 'Secret salah');
+    }
+  } catch (e) {
+    box.className = 'result-box show error';
+    box.textContent = '❌ ' + e.message;
+  }
+}
+
+function showStats(data) {
+  document.getElementById('adminStats').innerHTML = `
+    <div class="info-item"><div class="label">Server</div><div class="value">${data.server}</div></div>
+    <div class="info-item"><div class="label">Total Key</div><div class="value">${data.total_keys}</div></div>
+    <div class="info-item"><div class="label">Active</div><div class="value" style="color:#10b981">${data.active_keys}</div></div>
+    <div class="info-item"><div class="label">Expired</div><div class="value" style="color:#ef4444">${data.expired_keys}</div></div>
+    <div class="info-item"><div class="label">Banned IP</div><div class="value">${data.banned_ips}</div></div>
+    <div class="info-item"><div class="label">Total Request</div><div class="value">${data.total_requests}</div></div>
+  `;
+}
+
+async function generateKey() {
+  const label  = document.getElementById('genLabel').value.trim();
+  const durasi = document.getElementById('genDurasi').value;
+  const limit  = document.getElementById('genLimit').value.trim();
+  const lock   = document.getElementById('genLock').value.trim();
+
+  if (!label) { alert('Isi label dulu'); return; }
+
+  const box = document.getElementById('genResult');
+  box.className = 'result-box show';
+  box.textContent = '⏳ Generate...';
+
+  try {
+    const params = new URLSearchParams({ label, durasi, limit, lock_ip: lock });
+    const res = await fetch(`/api/generate?${params}`, { method: 'POST' });
+    const data = await res.json();
+    if (data.status === 'success') {
+      const d = data.data;
+      box.className = 'result-box show success';
+      box.innerHTML = `✅ APIKEY DIBUAT
+
+🔑 APIKEY    : ${d.apikey}
+📌 Label     : ${d.label}
+📊 Limit     : ${d.limit}
+⏰ Expired   : ${d.expired_at}
+🔒 Lock IP   : ${d.ip_locked || '-'}
+
+🌐 Base URL  : ${d.base_url}
+📎 Full URL  : ${d.full_url}`;
+      loadKeys();
+    } else {
+      box.className = 'result-box show error';
+      box.textContent = '❌ ' + data.message;
+    }
+  } catch (e) {
+    box.className = 'result-box show error';
+    box.textContent = '❌ ' + e.message;
+  }
+}
+
+async function loadKeys() {
+  const wrap = document.getElementById('keysList');
+  wrap.innerHTML = '<div class="loading">Memuat...</div>';
+  try {
+    const res = await fetch('/api/list');
+    const data = await res.json();
+    if (!data.data || !data.data.length) {
+      wrap.innerHTML = '<div class="loading">Belum ada API key</div>';
+      return;
+    }
+    let html = '<table><thead><tr><th>Label</th><th>APIKEY</th><th>Limit</th><th>Status</th><th>Aksi</th></tr></thead><tbody>';
+    for (const k of data.data) {
+      html += `<tr>
+        <td>${k.label}</td>
+        <td style="font-size:0.75em;font-family:monospace">${k.apikey}</td>
+        <td>${k.limit}</td>
+        <td>${k.status}</td>
+        <td>
+          <button onclick="delKey('${k.apikey}')" style="padding:4px 8px;font-size:0.8em;background:#ef4444;">Hapus</button>
+        </td>
+      </tr>`;
+    }
+    html += '</tbody></table>';
+    wrap.innerHTML = html;
+  } catch (e) {
+    wrap.innerHTML = `<div style="color:#ef4444">Error: ${e.message}</div>`;
+  }
+}
+
+async function delKey(apikey) {
+  if (!confirm('Hapus API key ini?')) return;
+  await fetch(`/api/admin?secret=${ADMIN_SECRET}&action=delete&apikey=${apikey}`);
+  loadKeys();
+}
+
+async function banIp() {
+  const ip = document.getElementById('banIp').value.trim();
+  if (!ip) { alert('Isi IP'); return; }
+  const box = document.getElementById('banResult');
+  box.className = 'result-box show';
+  try {
+    const res = await fetch(`/api/ban?secret=${ADMIN_SECRET}&action=ban&ip=${ip}`);
+    const data = await res.json();
+    if (data.status === 'success') {
+      box.className = 'result-box show success';
+      box.textContent = `✅ IP ${ip} dibanned`;
+    } else {
+      box.className = 'result-box show error';
+      box.textContent = '❌ ' + data.message;
+    }
+  } catch (e) {
+    box.className = 'result-box show error';
+    box.textContent = '❌ ' + e.message;
+  }
+}
+
+async function listBanned() {
+  const box = document.getElementById('banResult');
+  const res = await fetch(`/api/ban?secret=${ADMIN_SECRET}&action=list`);
+  const data = await res.json();
+  box.className = 'result-box show';
+  box.textContent = '🚫 Banned IP: ' + (data.data || []).join(', ');
+}
+
+function logout() {
+  ADMIN_SECRET = '';
+  document.getElementById('loginBox').style.display = 'block';
+  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('secret').value = '';
+}
+</script>
+</body>
+</html>
